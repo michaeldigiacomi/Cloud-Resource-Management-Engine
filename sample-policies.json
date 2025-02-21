@@ -1,0 +1,87 @@
+{
+    "policies": [
+        {
+            "id": "block-storage-account-keys",
+            "name": "Block Storage Account Keys",
+            "description": "Ensures storage accounts are created without access keys",
+            "resourceType": "Microsoft.Storage/storageAccounts",
+            "evaluationFrequency": 5,
+            "conditions": [
+                {
+                    "field": "properties.accessKeys",
+                    "operator": "exists"
+                }
+            ],
+            "remediationAction": {
+                "type": "modify",
+                "parameters": {
+                    "properties": {
+                        "accessKeys": null
+                    }
+                }
+            }
+        },
+        {
+            "id": "enforce-sql-elastic-pool",
+            "name": "Enforce SQL Elastic Pool",
+            "description": "Ensures SQL databases are created with elastic pool",
+            "resourceType": "Microsoft.Sql/servers/databases",
+            "evaluationFrequency": 10,
+            "conditions": [
+                {
+                    "field": "properties.elasticPoolId",
+                    "operator": "notExists"
+                }
+            ],
+            "remediationAction": {
+                "type": "delete"
+            }
+        },
+        {
+            "id": "block-storage-account-keys-delayed",
+            "name": "Block Storage Account Keys with Warning",
+            "description": "Ensures storage accounts are created without access keys, with 1-week grace period",
+            "resourceType": "Microsoft.Storage/storageAccounts",
+            "evaluationFrequency": 5,
+            "conditions": [
+                {
+                    "field": "properties.accessKeys",
+                    "operator": "exists"
+                }
+            ],
+            "remediationAction": {
+                "type": "modify",
+                "parameters": {
+                    "properties": {
+                        "accessKeys": null
+                    }
+                },
+                "timing": {
+                    "delay": "7d",
+                    "warning_threshold": "5d"
+                }
+            }
+        },
+        {
+            "id": "remove-unused-nics",
+            "name": "Remove Unused NICs",
+            "description": "Removes network interfaces that have been disconnected for over 30 days",
+            "resourceType": "Microsoft.Network/networkInterfaces",
+            "evaluationFrequency": 60,
+            "conditions": [
+                {
+                    "field": "properties.virtualMachine",
+                    "operator": "notExists"
+                }
+            ],
+            "remediationAction": {
+                "type": "delete",
+                "parameters": {},
+                "timing": {
+                    "delay": "30d",
+                    "warning_threshold": "25d"
+                }
+            }
+        }
+    ]
+}
