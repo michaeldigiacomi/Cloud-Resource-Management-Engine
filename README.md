@@ -9,6 +9,8 @@ A flexible platform for managing and enforcing cloud resource policies with auto
 - Configurable evaluation frequencies
 - Multiple remediation actions (modify, delete, tag)
 - Supports both Azure and AWS
+- Scope filtering by management group and subscription (Azure only)
+- Console logging for events
 
 ## Installation
 
@@ -27,10 +29,6 @@ export AZURE_SUBSCRIPTION_ID="your-subscription-id"
 export AZURE_TENANT_ID="your-tenant-id"
 export AZURE_CLIENT_ID="your-client-id"
 export AZURE_CLIENT_SECRET="your-client-secret"
-
-# EventHub Configuration
-export AZURE_EVENTHUB_CONNECTION_STRING="your-eventhub-connection-string"
-export AZURE_EVENTHUB_NAME="your-eventhub-name"
 ```
 
 ### AWS
@@ -38,6 +36,11 @@ export AZURE_EVENTHUB_NAME="your-eventhub-name"
 export AWS_ACCESS_KEY_ID="your-access-key-id"
 export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
 export AWS_REGION="your-region"
+```
+
+You can also pass the policy configuration file path via an environment variable. For example:
+```bash
+export POLICY_CONFIG="./policies/sample-policies.json"
 ```
 
 ## Policy Definition Structure
@@ -63,6 +66,10 @@ Policies are defined in JSON format with the following structure:
         "parameters": {
             "key": "value"
         }
+    },
+    "scope": {
+        "managementGroup": "your-management-group-id",
+        "subscription": "your-subscription-id"
     }
 }
 ```
@@ -222,8 +229,9 @@ Policies are defined in JSON format with the following structure:
 
 ## Usage
 
-1. Create your policy definitions in a JSON file (e.g., `policies/sample-policies.json`)
-2. Run the platform:
+1. Create your policy definitions in a JSON file (e.g., `policies/sample-policies.json`).
+2. The main entry point will read the policy config from the environment variable `POLICY_CONFIG` (defaulting to `./policies/sample-policies.json` if not set).
+3. Run the platform:
 
 ### Python Version
 ```bash
@@ -270,7 +278,7 @@ Supported time units:
 
 ## Event Types
 
-The platform sends the following events to Azure Event Hub:
+The platform logs the following events to the console:
 
 - `PolicyViolationDetected`: When a policy violation is first detected
 - `PolicyViolationWarning`: When a warning threshold is reached
@@ -301,4 +309,3 @@ Each event contains:
 ## License
 
 MIT
-````

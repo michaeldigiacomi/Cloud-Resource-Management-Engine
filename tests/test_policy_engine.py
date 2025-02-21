@@ -38,5 +38,21 @@ class TestPolicyEngine(unittest.TestCase):
         self.policy_engine.evaluate_policy(policy)
         self.policy_engine.eventhub.send_event.assert_called()
 
+    def test_evaluate_conditions(self):
+        resource = AsyncMock(id="test-resource", type="test-type", tags={})
+        condition = PolicyCondition(field="tags.environment", operator="notExists")
+        result = self.policy_engine._evaluate_conditions(resource, [condition])
+        self.assertTrue(result)
+
+    def test_remediation_timing(self):
+        # Add timing tests
+
+    def test_error_handling(self):
+        # Add error handling tests
+
+    @patch('policy_engine.ResourceManagementClient')
+    def test_resource_caching(self, MockClient):
+        # Add caching tests
+
 if __name__ == '__main__':
     unittest.main()
