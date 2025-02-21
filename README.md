@@ -100,6 +100,10 @@ Policies are defined in JSON format with the following structure:
                 }
             }
         }
+    },
+    "scope": {
+        "managementGroup": "your-management-group-id",
+        "subscription": "your-subscription-id"
     }
 }
 ```
@@ -124,6 +128,10 @@ Policies are defined in JSON format with the following structure:
         "parameters": {
             "environment": "development"
         }
+    },
+    "scope": {
+        "managementGroup": "your-management-group-id",
+        "subscription": "your-subscription-id"
     }
 }
 ```
@@ -222,6 +230,14 @@ Policies are defined in JSON format with the following structure:
 python src/main.py
 ```
 
+## Running Tests
+
+To run the unit tests, use the following command:
+
+```bash
+python -m unittest discover -s tests
+```
+
 ## Policy Operators
 
 - `equals`: Exact match comparison
@@ -285,3 +301,4 @@ Each event contains:
 ## License
 
 MIT
+````

@@ -20,8 +20,10 @@ def main():
         raise ValueError('AZURE_SUBSCRIPTION_ID environment variable is required')
 
     cloud_provider = os.environ.get('CLOUD_PROVIDER', 'azure')
+    management_group_id = os.environ.get('AZURE_MANAGEMENT_GROUP_ID')
+
     policies = load_policies('./policies/sample-policies.json', cloud_provider)
-    daemon = PolicyDaemon(subscription_id, policies, cloud_provider)
+    daemon = PolicyDaemon(subscription_id, policies, cloud_provider, management_group_id)
 
     def handle_shutdown(signum, frame):
         print("Shutting down...")

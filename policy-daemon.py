@@ -5,8 +5,8 @@ from ..services.policy_engine import PolicyEngine
 from ..types.policy import PolicyDefinition
 
 class PolicyDaemon:
-    def __init__(self, subscription_id: str, policies: List[PolicyDefinition], cloud_provider: str = 'azure'):
-        self.policy_engine = PolicyEngine(subscription_id, cloud_provider)
+    def __init__(self, subscription_id: str, policies: List[PolicyDefinition], cloud_provider: str = 'azure', management_group_id: str = None):
+        self.policy_engine = PolicyEngine(subscription_id, cloud_provider, management_group_id)
         self.policies = policies
         self.threads: List[threading.Thread] = []
         self.running = False

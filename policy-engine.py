@@ -10,8 +10,9 @@ from services.eventhub_service import EventHubService
 from services.aws_service import AWSService
 
 class PolicyEngine:
-    def __init__(self, subscription_id: str, cloud_provider: str = 'azure'):
+    def __init__(self, subscription_id: str, cloud_provider: str = 'azure', management_group_id: str = None):
         self.cloud_provider = cloud_provider
+        self.management_group_id = management_group_id
         if cloud_provider == 'azure':
             self.credential = DefaultAzureCredential()
             self.client = ResourceManagementClient(self.credential, subscription_id)
@@ -38,7 +39,12 @@ class PolicyEngine:
 
     async def evaluate_policy(self, policy: PolicyDefinition) -> None:
         if self.cloud_provider == 'azure':
-            resources = self.client.resources.list()
+            if policy.scope and policy.scope.get('managementGroup'):
+                resources = self.client.resources.list_by_management_group(policy.scope['managementGroup'])
+            elif policy.scope and policy.scope.get('subscription'):
+                resources = self.client.resources.list_by_subscription(policy.scope['subscription'])
+            else:
+                resources = self.client.resources.list()
         elif self.cloud_provider == 'aws':
             resources = self.client.get_resources(policy.resource_type)
         
