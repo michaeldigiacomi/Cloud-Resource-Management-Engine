@@ -187,6 +187,31 @@ Policies are defined in JSON format with the following structure:
 }
 ```
 
+#### 3. Shutdown Instances if Tags are Missing
+
+```json
+{
+    "id": "shutdown-instances-missing-tags",
+    "name": "Shutdown Instances Missing Tags",
+    "description": "Shuts down instances that are missing required tags",
+    "resourceType": "AWS::EC2::Instance",
+    "evaluationFrequency": 10,
+    "conditions": [
+        {
+            "field": "Tags.environment",
+            "operator": "notExists"
+        }
+    ],
+    "remediationAction": {
+        "type": "modify",
+        "parameters": {
+            "InstanceId": "instance-id",
+            "State": "stopped"
+        }
+    }
+}
+```
+
 ## Usage
 
 1. Create your policy definitions in a JSON file (e.g., `policies/sample-policies.json`)
