@@ -1,6 +1,6 @@
-# Azure Policy Management Platform
+# Cloud Policy Management Platform
 
-A flexible platform for managing and enforcing Azure resource policies with automated remediation capabilities. This platform allows you to define policies in JSON and automatically enforces them across your Azure resources.
+A flexible platform for managing and enforcing cloud resource policies with automated remediation capabilities. This platform allows you to define policies in JSON and automatically enforces them across your Azure and AWS resources.
 
 ## Features
 
@@ -8,24 +8,20 @@ A flexible platform for managing and enforcing Azure resource policies with auto
 - Automated policy enforcement
 - Configurable evaluation frequencies
 - Multiple remediation actions (modify, delete, tag)
-- Supports both Python and TypeScript implementations
+- Supports both Azure and AWS
 
 ## Installation
 
 ### Python Version
 ```bash
-pip install azure-identity azure-mgmt-resource dacite
-```
-
-### TypeScript Version
-```bash
-npm install @azure/identity @azure/arm-resources
+pip install azure-identity azure-mgmt-resource boto3 dacite
 ```
 
 ## Configuration
 
-Set up your Azure credentials using environment variables:
+Set up your cloud credentials using environment variables:
 
+### Azure
 ```bash
 export AZURE_SUBSCRIPTION_ID="your-subscription-id"
 export AZURE_TENANT_ID="your-tenant-id"
@@ -37,6 +33,13 @@ export AZURE_EVENTHUB_CONNECTION_STRING="your-eventhub-connection-string"
 export AZURE_EVENTHUB_NAME="your-eventhub-name"
 ```
 
+### AWS
+```bash
+export AWS_ACCESS_KEY_ID="your-access-key-id"
+export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
+export AWS_REGION="your-region"
+```
+
 ## Policy Definition Structure
 
 Policies are defined in JSON format with the following structure:
@@ -46,7 +49,7 @@ Policies are defined in JSON format with the following structure:
     "id": "unique-policy-id",
     "name": "Policy Name",
     "description": "Policy Description",
-    "resourceType": "Microsoft.*/resourceType",
+    "resourceType": "CloudProvider/ResourceType",
     "evaluationFrequency": 5,
     "conditions": [
         {
@@ -66,7 +69,9 @@ Policies are defined in JSON format with the following structure:
 
 ## Policy Examples
 
-### 1. Enforce Storage Account Encryption
+### Azure Examples
+
+#### 1. Enforce Storage Account Encryption
 
 ```json
 {
@@ -99,7 +104,7 @@ Policies are defined in JSON format with the following structure:
 }
 ```
 
-### 2. Enforce Resource Tagging
+#### 2. Enforce Resource Tagging
 
 ```json
 {
@@ -123,29 +128,32 @@ Policies are defined in JSON format with the following structure:
 }
 ```
 
-### 3. Block Public IP on Network Interfaces
+### AWS Examples
+
+#### 1. Enforce S3 Bucket Encryption
 
 ```json
 {
-    "id": "block-public-ip",
-    "name": "Block Public IP",
-    "description": "Prevents network interfaces from having public IPs",
-    "resourceType": "Microsoft.Network/networkInterfaces",
+    "id": "enforce-s3-encryption",
+    "name": "Enforce S3 Encryption",
+    "description": "Ensures all S3 buckets have encryption enabled",
+    "resourceType": "AWS::S3::Bucket",
     "evaluationFrequency": 5,
     "conditions": [
         {
-            "field": "properties.ipConfigurations[0].properties.publicIPAddress",
-            "operator": "exists"
+            "field": "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm",
+            "operator": "notEquals",
+            "value": "AES256"
         }
     ],
     "remediationAction": {
         "type": "modify",
         "parameters": {
-            "properties": {
-                "ipConfigurations": [
+            "ServerSideEncryptionConfiguration": {
+                "Rules": [
                     {
-                        "properties": {
-                            "publicIPAddress": null
+                        "ApplyServerSideEncryptionByDefault": {
+                            "SSEAlgorithm": "AES256"
                         }
                     }
                 ]
@@ -155,87 +163,25 @@ Policies are defined in JSON format with the following structure:
 }
 ```
 
-### 4. Remove Inactive Storage Accounts
+#### 2. Enforce Resource Tagging
 
 ```json
 {
-    "id": "remove-inactive-storage",
-    "name": "Remove Inactive Storage Accounts",
-    "description": "Deletes storage accounts that have been inactive for 90 days, with warnings at 75 days",
-    "resourceType": "Microsoft.Storage/storageAccounts",
-    "evaluationFrequency": 1440,
+    "id": "enforce-environment-tag",
+    "name": "Enforce Environment Tag",
+    "description": "Ensures all resources have an environment tag",
+    "resourceType": "AWS::Resource::Tag",
+    "evaluationFrequency": 10,
     "conditions": [
         {
-            "field": "properties.lastAccessTime",
-            "operator": "exists"
+            "field": "Tags.environment",
+            "operator": "notExists"
         }
     ],
     "remediationAction": {
-        "type": "delete",
-        "parameters": {},
-        "timing": {
-            "delay": "90d",
-            "warning_threshold": "75d"
-        }
-    }
-}
-```
-
-### 5. Enforce Storage Account Keys Removal
-
-```json
-{
-    "id": "remove-storage-keys",
-    "name": "Remove Storage Account Keys",
-    "description": "Removes storage account keys after 7 days, with warning at 5 days",
-    "resourceType": "Microsoft.Storage/storageAccounts",
-    "evaluationFrequency": 60,
-    "conditions": [
-        {
-            "field": "properties.accessKeys",
-            "operator": "exists"
-        }
-    ],
-    "remediationAction": {
-        "type": "modify",
+        "type": "tag",
         "parameters": {
-            "properties": {
-                "accessKeys": null
-            }
-        },
-        "timing": {
-            "delay": "7d",
-            "warning_threshold": "5d"
-        }
-    }
-}
-```
-
-### 6. Clean Up Unused Network Security Groups
-
-```json
-{
-    "id": "cleanup-unused-nsgs",
-    "name": "Clean Up Unused NSGs",
-    "description": "Removes NSGs that have no associated resources for 30 days",
-    "resourceType": "Microsoft.Network/networkSecurityGroups",
-    "evaluationFrequency": 120,
-    "conditions": [
-        {
-            "field": "properties.networkInterfaces",
-            "operator": "notExists"
-        },
-        {
-            "field": "properties.subnets",
-            "operator": "notExists"
-        }
-    ],
-    "remediationAction": {
-        "type": "delete",
-        "parameters": {},
-        "timing": {
-            "delay": "30d",
-            "warning_threshold": "25d"
+            "environment": "development"
         }
     }
 }
@@ -249,11 +195,6 @@ Policies are defined in JSON format with the following structure:
 ### Python Version
 ```bash
 python src/main.py
-```
-
-### TypeScript Version
-```bash
-npm start
 ```
 
 ## Policy Operators
@@ -298,7 +239,7 @@ The platform sends the following events to Azure Event Hub:
 Each event contains:
 - eventType: The type of event
 - timestamp: UTC timestamp
-- resourceId: Azure resource ID
+- resourceId: Cloud resource ID
 - policyId: Policy identifier
 - details: Additional event-specific information
 

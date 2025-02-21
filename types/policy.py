@@ -24,3 +24,16 @@ class PolicyDefinition:
         self.resource_type = resource_type
         self.conditions = conditions
         self.remediation_action = remediation_action
+
+class AWSPolicyCondition:
+    def __init__(self, field: str, operator: str, value: Any = None):
+        self.field = field
+        self.operator = operator
+        self.value = value
+
+class AWSPolicyDefinition:
+    def __init__(self, policy_id: str, resource_type: str, conditions: List[AWSPolicyCondition], remediation_action: RemediationAction):
+        self.id = policy_id
+        self.resource_type = resource_type
+        self.conditions = conditions
+        self.remediation_action = remediation_action

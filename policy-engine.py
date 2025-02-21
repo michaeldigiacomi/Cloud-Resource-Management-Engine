@@ -7,10 +7,16 @@ from azure.mgmt.resource import ResourceManagementClient
 
 from types.policy import PolicyDefinition, PolicyCondition, RemediationAction
 from services.eventhub_service import EventHubService
+from services.aws_service import AWSService
 
 class PolicyEngine:
-    def __init__(self, subscription_id: str):
-        self.credential = DefaultAzureCredential()
+    def __init__(self, subscription_id: str, cloud_provider: str = 'azure'):
+        self.cloud_provider = cloud_provider
+        if cloud_provider == 'azure':
+            self.credential = DefaultAzureCredential()
+            self.client = ResourceManagementClient(self.credential, subscription_id)
+        elif cloud_provider == 'aws':
+            self.client = AWSService()
         self.subscription_id = subscription_id
         self.state_file = Path("./state/remediation_state.json")
         self.state_file.parent.mkdir(exist_ok=True)
@@ -31,8 +37,10 @@ class PolicyEngine:
         return f"{resource.id}:{resource.type}"
 
     async def evaluate_policy(self, policy: PolicyDefinition) -> None:
-        client = ResourceManagementClient(self.credential, self.subscription_id)
-        resources = client.resources.list()
+        if self.cloud_provider == 'azure':
+            resources = self.client.resources.list()
+        elif self.cloud_provider == 'aws':
+            resources = self.client.get_resources(policy.resource_type)
         
         for resource in resources:
             if resource.type == policy.resource_type:
@@ -128,28 +136,31 @@ class PolicyEngine:
         return obj
 
     async def _apply_remediation(self, resource: Any, action: RemediationAction) -> None:
-        client = ResourceManagementClient(self.credential, self.subscription_id)
-        
-        if action.type == 'modify':
-            await client.resources.begin_update(
-                resource_group_name=resource.resource_group,
-                resource_provider_namespace=resource.type.split('/')[0],
-                parent_resource_path='',
-                resource_type=resource.type.split('/')[-1],
-                resource_name=resource.name,
-                parameters=action.parameters
-            )
-        elif action.type == 'delete':
-            await client.resources.begin_delete(
-                resource_group_name=resource.resource_group,
-                resource_provider_namespace=resource.type.split('/')[0],
-                parent_resource_path='',
-                resource_type=resource.type.split('/')[-1],
-                resource_name=resource.name
-            )
-        elif action.type == 'tag':
-            tags = {**resource.tags, **action.parameters}
-            await client.tags.begin_create_or_update_at_scope(
-                scope=resource.id,
-                parameters={'tags': tags}
-            )
+        if self.cloud_provider == 'azure':
+            client = ResourceManagementClient(self.credential, self.subscription_id)
+            
+            if action.type == 'modify':
+                await client.resources.begin_update(
+                    resource_group_name=resource.resource_group,
+                    resource_provider_namespace=resource.type.split('/')[0],
+                    parent_resource_path='',
+                    resource_type=resource.type.split('/')[-1],
+                    resource_name=resource.name,
+                    parameters=action.parameters
+                )
+            elif action.type == 'delete':
+                await client.resources.begin_delete(
+                    resource_group_name=resource.resource_group,
+                    resource_provider_namespace=resource.type.split('/')[0],
+                    parent_resource_path='',
+                    resource_type=resource.type.split('/')[-1],
+                    resource_name=resource.name
+                )
+            elif action.type == 'tag':
+                tags = {**resource.tags, **action.parameters}
+                await client.tags.begin_create_or_update_at_scope(
+                    scope=resource.id,
+                    parameters={'tags': tags}
+                )
+        elif self.cloud_provider == 'aws':
+            self.client.apply_remediation(resource['ResourceARN'], action)
