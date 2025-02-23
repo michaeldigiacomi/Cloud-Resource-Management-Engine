@@ -1,6 +1,6 @@
-# Cloud Policy Management Platform
+# Azure Resource Management Platform
 
-A flexible platform for managing and enforcing cloud resource policies with automated remediation capabilities. This platform allows you to define policies in JSON and automatically enforces them across your Azure and AWS resources.
+A flexible platform for managing and enforcing Azure resource policies with automated remediation capabilities.
 
 ## Features
 
@@ -8,22 +8,27 @@ A flexible platform for managing and enforcing cloud resource policies with auto
 - Automated policy enforcement
 - Configurable evaluation frequencies
 - Multiple remediation actions (modify, delete, tag)
-- Supports both Azure and AWS
-- Scope filtering by management group and subscription (Azure only)
-- Console logging for events
+- Scope filtering by management group and subscription
+- Built-in monitoring and metrics collection
+- Resource state caching for improved performance
+- Async policy evaluation
+- Configurable retry logic
+- Delayed remediation with warnings
 
 ## Installation
 
-### Python Version
+### Requirements
+- Python 3.8+
+- Azure SDK
+
 ```bash
-pip install azure-identity azure-mgmt-resource boto3 dacite
+pip install -r requirements.txt
 ```
 
 ## Configuration
 
-Set up your cloud credentials using environment variables:
+Set up your Azure credentials using environment variables:
 
-### Azure
 ```bash
 export AZURE_SUBSCRIPTION_ID="your-subscription-id"
 export AZURE_TENANT_ID="your-tenant-id"
@@ -31,29 +36,21 @@ export AZURE_CLIENT_ID="your-client-id"
 export AZURE_CLIENT_SECRET="your-client-secret"
 ```
 
-### AWS
-```bash
-export AWS_ACCESS_KEY_ID="your-access-key-id"
-export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
-export AWS_REGION="your-region"
-```
-
-You can also pass the policy configuration file path via an environment variable. For example:
+Optional configuration:
 ```bash
 export POLICY_CONFIG="./policies/sample-policies.json"
+export AZURE_MANAGEMENT_GROUP_ID="your-management-group-id"
 ```
 
 ## Policy Definition Structure
-
-Policies are defined in JSON format with the following structure:
 
 ```json
 {
     "id": "unique-policy-id",
     "name": "Policy Name",
     "description": "Policy Description",
-    "resourceType": "CloudProvider/ResourceType",
-    "evaluationFrequency": 5,
+    "resource_type": "Microsoft.*/ResourceType",
+    "evaluation_frequency": 5,
     "conditions": [
         {
             "field": "property.path",
@@ -61,15 +58,19 @@ Policies are defined in JSON format with the following structure:
             "value": "optional-value"
         }
     ],
-    "remediationAction": {
+    "remediation_action": {
         "type": "modify|delete|tag",
         "parameters": {
             "key": "value"
+        },
+        "timing": {
+            "delay": "30d",
+            "warning_threshold": "25d"
         }
     },
     "scope": {
-        "managementGroup": "your-management-group-id",
-        "subscription": "your-subscription-id"
+        "managementGroup": "optional-mg-id",
+        "subscription": "optional-sub-id"
     }
 }
 ```
@@ -143,162 +144,62 @@ Policies are defined in JSON format with the following structure:
 }
 ```
 
-### AWS Examples
+## Monitoring and Metrics
 
-#### 1. Enforce S3 Bucket Encryption
+The platform provides built-in monitoring through the MonitoringService:
 
-```json
-{
-    "id": "enforce-s3-encryption",
-    "name": "Enforce S3 Encryption",
-    "description": "Ensures all S3 buckets have encryption enabled",
-    "resourceType": "AWS::S3::Bucket",
-    "evaluationFrequency": 5,
-    "conditions": [
-        {
-            "field": "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm",
-            "operator": "notEquals",
-            "value": "AES256"
-        }
-    ],
-    "remediationAction": {
-        "type": "modify",
-        "parameters": {
-            "ServerSideEncryptionConfiguration": {
-                "Rules": [
-                    {
-                        "ApplyServerSideEncryptionByDefault": {
-                            "SSEAlgorithm": "AES256"
-                        }
-                    }
-                ]
-            }
-        }
-    }
-}
+```python
+@dataclass
+class MetricData:
+    policy_id: str
+    resource_id: str
+    action: str
+    status: str
+    duration: float
 ```
 
-#### 2. Enforce Resource Tagging
+### Available Metrics
 
-```json
-{
-    "id": "enforce-environment-tag",
-    "name": "Enforce Environment Tag",
-    "description": "Ensures all resources have an environment tag",
-    "resourceType": "AWS::Resource::Tag",
-    "evaluationFrequency": 10,
-    "conditions": [
-        {
-            "field": "Tags.environment",
-            "operator": "notExists"
-        }
-    ],
-    "remediationAction": {
-        "type": "tag",
-        "parameters": {
-            "environment": "development"
-        }
-    }
-}
-```
+| Event Type | Description |
+|------------|-------------|
+| violation_detected | Initial policy violation |
+| violation_warning | Warning threshold reached |
+| remediation | Remediation action applied |
+| immediate_remediation | Immediate remediation applied |
 
-#### 3. Shutdown Instances if Tags are Missing
+### Status Types
 
-```json
-{
-    "id": "shutdown-instances-missing-tags",
-    "name": "Shutdown Instances Missing Tags",
-    "description": "Shuts down instances that are missing required tags",
-    "resourceType": "AWS::EC2::Instance",
-    "evaluationFrequency": 10,
-    "conditions": [
-        {
-            "field": "Tags.environment",
-            "operator": "notExists"
-        }
-    ],
-    "remediationAction": {
-        "type": "modify",
-        "parameters": {
-            "InstanceId": "instance-id",
-            "State": "stopped"
-        }
-    }
-}
-```
+- pending: Initial violation state
+- warning: Warning threshold reached
+- success: Remediation completed
+- failed: Remediation failed
 
-## Usage
+## Resource Caching
 
-1. Create your policy definitions in a JSON file (e.g., `policies/sample-policies.json`).
-2. The main entry point will read the policy config from the environment variable `POLICY_CONFIG` (defaulting to `./policies/sample-policies.json` if not set).
-3. Run the platform:
-
-### Python Version
-```bash
-python src/main.py
-```
-
-## Running Tests
-
-To run the unit tests, use the following command:
-
-```bash
-python -m unittest discover -s tests
-```
-
-## Policy Operators
-
-- `equals`: Exact match comparison
-- `notEquals`: Negative exact match comparison
-- `contains`: Check if value is in array or string
-- `exists`: Check if field exists
-- `notExists`: Check if field doesn't exist
-
-## Remediation Actions
-
-- `modify`: Update resource properties
-- `delete`: Remove the resource
-- `tag`: Add or update resource tags
-
-## Timing Configuration
-
-Policies can include timing configurations for delayed remediation:
-
-```json
-"timing": {
-    "delay": "30d",        // Delay before remediation (e.g., 30d, 24h, 60m)
-    "warning_threshold": "25d"  // When to send warning (optional)
-}
-```
-
-Supported time units:
-- `d`: days
-- `h`: hours
-- `m`: minutes
-
-## Event Types
-
-The platform logs the following events to the console:
-
-- `PolicyViolationDetected`: When a policy violation is first detected
-- `PolicyViolationWarning`: When a warning threshold is reached
-- `PolicyRemediation`: When remediation is applied
-- `ImmediateRemediation`: When immediate remediation is applied
-
-Each event contains:
-- eventType: The type of event
-- timestamp: UTC timestamp
-- resourceId: Cloud resource ID
-- policyId: Policy identifier
-- details: Additional event-specific information
+Resources are cached to improve performance:
+- Management group resources: `mg:{group_id}`
+- Subscription resources: `sub:{subscription_id}`
+- All resources: `all`
+- Cache timeout: 5 minutes (configurable)
 
 ## Best Practices
 
-1. Start with non-destructive policies (tagging) before implementing destructive ones
-2. Test policies on non-production resources first
-3. Use reasonable evaluation frequencies to avoid API throttling
-4. Include clear descriptions in policy definitions
-5. Monitor policy execution logs for unexpected behavior
+1. Start with non-destructive policies
+2. Use appropriate evaluation frequencies
+3. Implement warning thresholds for destructive actions
+4. Monitor remediation metrics
+5. Use scoped policies for better performance
+6. Configure proper retry strategies
+7. Review monitoring logs regularly
+
+## Error Handling
+
+The platform implements:
+- Retry logic for Azure API calls
+- Metric tracking for failures
+- Warning thresholds before remediation
+- Resource state persistence
+- Async operation error handling
 
 ## Contributing
 

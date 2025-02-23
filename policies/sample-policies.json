@@ -4,15 +4,15 @@
             "id": "block-storage-account-keys",
             "name": "Block Storage Account Keys",
             "description": "Ensures storage accounts are created without access keys",
-            "resourceType": "Microsoft.Storage/storageAccounts",
-            "evaluationFrequency": 5,
+            "resource_type": "Microsoft.Storage/storageAccounts",
+            "evaluation_frequency": 5,
             "conditions": [
                 {
                     "field": "properties.accessKeys",
                     "operator": "exists"
                 }
             ],
-            "remediationAction": {
+            "remediation_action": {
                 "type": "modify",
                 "parameters": {
                     "properties": {
@@ -25,31 +25,32 @@
             "id": "enforce-sql-elastic-pool",
             "name": "Enforce SQL Elastic Pool",
             "description": "Ensures SQL databases are created with elastic pool",
-            "resourceType": "Microsoft.Sql/servers/databases",
-            "evaluationFrequency": 10,
+            "resource_type": "Microsoft.Sql/servers/databases",
+            "evaluation_frequency": 10,
             "conditions": [
                 {
                     "field": "properties.elasticPoolId",
                     "operator": "notExists"
                 }
             ],
-            "remediationAction": {
-                "type": "delete"
+            "remediation_action": {
+                "type": "delete",
+                "parameters": {}
             }
         },
         {
             "id": "block-storage-account-keys-delayed",
             "name": "Block Storage Account Keys with Warning",
             "description": "Ensures storage accounts are created without access keys, with 1-week grace period",
-            "resourceType": "Microsoft.Storage/storageAccounts",
-            "evaluationFrequency": 5,
+            "resource_type": "Microsoft.Storage/storageAccounts",
+            "evaluation_frequency": 5,
             "conditions": [
                 {
                     "field": "properties.accessKeys",
                     "operator": "exists"
                 }
             ],
-            "remediationAction": {
+            "remediation_action": {
                 "type": "modify",
                 "parameters": {
                     "properties": {
@@ -66,15 +67,15 @@
             "id": "remove-unused-nics",
             "name": "Remove Unused NICs",
             "description": "Removes network interfaces that have been disconnected for over 30 days",
-            "resourceType": "Microsoft.Network/networkInterfaces",
-            "evaluationFrequency": 60,
+            "resource_type": "Microsoft.Network/networkInterfaces",
+            "evaluation_frequency": 60,
             "conditions": [
                 {
                     "field": "properties.virtualMachine",
                     "operator": "notExists"
                 }
             ],
-            "remediationAction": {
+            "remediation_action": {
                 "type": "delete",
                 "parameters": {},
                 "timing": {
@@ -87,8 +88,8 @@
             "id": "enforce-storage-encryption",
             "name": "Enforce Storage Encryption",
             "description": "Ensures all storage accounts have encryption enabled",
-            "resourceType": "Microsoft.Storage/storageAccounts",
-            "evaluationFrequency": 5,
+            "resource_type": "Microsoft.Storage/storageAccounts",
+            "evaluation_frequency": 5,
             "conditions": [
                 {
                     "field": "properties.encryption.services.blob.enabled",
@@ -96,7 +97,7 @@
                     "value": true
                 }
             ],
-            "remediationAction": {
+            "remediation_action": {
                 "type": "modify",
                 "parameters": {
                     "properties": {
@@ -111,78 +112,26 @@
                 }
             },
             "scope": {
-                "managementGroup": "your-management-group-id",
-                "subscription": "your-subscription-id"
+                "managementGroup": "mg-production",
+                "subscription": "sub-001"
             }
         },
         {
             "id": "enforce-environment-tag",
             "name": "Enforce Environment Tag",
             "description": "Ensures all resources have an environment tag",
-            "resourceType": "Microsoft.Resources/resources",
-            "evaluationFrequency": 10,
+            "resource_type": "Microsoft.Resources/resources",
+            "evaluation_frequency": 10,
             "conditions": [
                 {
                     "field": "tags.environment",
                     "operator": "notExists"
                 }
             ],
-            "remediationAction": {
+            "remediation_action": {
                 "type": "tag",
                 "parameters": {
                     "environment": "development"
-                }
-            },
-            "scope": {
-                "managementGroup": "your-management-group-id",
-                "subscription": "your-subscription-id"
-            }
-        },
-        {
-            "id": "enforce-s3-encryption",
-            "name": "Enforce S3 Encryption",
-            "description": "Ensures all S3 buckets have encryption enabled",
-            "resourceType": "AWS::S3::Bucket",
-            "evaluationFrequency": 5,
-            "conditions": [
-                {
-                    "field": "ServerSideEncryptionConfiguration.Rules[0].ApplyServerSideEncryptionByDefault.SSEAlgorithm",
-                    "operator": "notEquals",
-                    "value": "AES256"
-                }
-            ],
-            "remediationAction": {
-                "type": "modify",
-                "parameters": {
-                    "ServerSideEncryptionConfiguration": {
-                        "Rules": [
-                            {
-                                "ApplyServerSideEncryptionByDefault": {
-                                    "SSEAlgorithm": "AES256"
-                                }
-                            }
-                        ]
-                    }
-                }
-            }
-        },
-        {
-            "id": "shutdown-instances-missing-tags",
-            "name": "Shutdown Instances Missing Tags",
-            "description": "Shuts down instances that are missing required tags",
-            "resourceType": "AWS::EC2::Instance",
-            "evaluationFrequency": 10,
-            "conditions": [
-                {
-                    "field": "Tags.environment",
-                    "operator": "notExists"
-                }
-            ],
-            "remediationAction": {
-                "type": "modify",
-                "parameters": {
-                    "InstanceId": "instance-id",
-                    "State": "stopped"
                 }
             }
         }
